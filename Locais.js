@@ -1,46 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Dimensions, TouchableOpacity, Text, PermissionsAndroid } from 'react-native';
+import { View, StyleSheet, Dimensions, TouchableOpacity, Text } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
+import * as Location from 'expo-location';
 
 const MyComponent = () => {
-  // State para armazenar dados de localização e marcadores
   const [latLongData, setLatLongData] = useState([]);
   const [filteredMarkers, setFilteredMarkers] = useState([]);
   const [userLocation, setUserLocation] = useState(null);
 
-  // Função executada ao iniciar o componente para solicitar permissão de localização e buscar os dados
   useEffect(() => {
-    requestLocationPermission(); // Solicita permissão de localização ao carregar o componente
-    fetchData(); // Busca dados de localização de estabelecimentos
+    requestLocationPermission();
+    fetchData();
   }, []);
 
-  // Solicita permissão de localização ao usuário
   const requestLocationPermission = async () => {
     try {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        {
-          title: 'Permissão de Localização',
-          message: 'Este aplicativo precisa acessar sua localização para funcionar corretamente.',
-          buttonPositive: 'OK',
-        }
-      );
-      // Se a permissão for concedida, obtém a localização atual do usuário
-      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              setUserLocation({
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude,
-              });
-            },
-            (error) => console.log(error),
-            { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 }
-          );
-        } else {
-          console.log('Geolocalização não suportada');
-        }
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const location = await Location.getCurrentPositionAsync({});
+        setUserLocation({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
       } else {
         console.log('Permissão de localização negada');
       }
@@ -49,36 +30,30 @@ const MyComponent = () => {
     }
   };
 
-  // Busca os dados de localização dos estabelecimentos
-  const fetchData = () => {
-    fetch('https://raw.githubusercontent.com/PedroEspiindola/json/main/dadosrecife.json')
-      .then((response) => response.json())
-      .then((data) => {
-        // Mapeia os dados para formatar as coordenadas dos marcadores
-        const coordinates = data.records.map((record) => ({
-          latitude: parseFloat(record[9]),
-          longitude: parseFloat(record[10]),
-          nome_estabelecimento: record[1],
-          tipo_estabelecimento: record[2],
-        }));
+  const fetchData = async () => {
+    try {
+      const response = await fetch('https://raw.githubusercontent.com/PedroEspiindola/json/main/dadosrecife.json');
+      const data = await response.json();
 
-        // Define os dados de marcadores e marcadores filtrados para exibição
-        setLatLongData(coordinates);
-        setFilteredMarkers(coordinates);
-      })
-      .catch((error) => {
-        console.error('Erro na requisição:', error);
-      });
+      const coordinates = data.records.map((record) => ({
+        latitude: parseFloat(record[9]),
+        longitude: parseFloat(record[10]),
+        nome_estabelecimento: record[1],
+        tipo_estabelecimento: record[2],
+      }));
+
+      setLatLongData(coordinates);
+      setFilteredMarkers(coordinates);
+    } catch (error) {
+      console.error('Erro na requisição:', error);
+    }
   };
 
-  // Filtra os marcadores com base no tipo de estabelecimento selecionado
   const handleTypeSelection = (type) => {
     const filtered = latLongData.filter((marker) => marker.tipo_estabelecimento === type);
     setFilteredMarkers(filtered);
   };
 
-
-   // Renderização da interface do componente
   return (
     <View style={styles.container}>
       <View style={styles.mapContainer}>
@@ -103,7 +78,7 @@ const MyComponent = () => {
             <Marker
               coordinate={{ latitude: userLocation.latitude, longitude: userLocation.longitude }}
               title="Sua Localização"
-              pinColor="blue"
+              pinColor="aquamarine"
             />
           )}
         </MapView>
